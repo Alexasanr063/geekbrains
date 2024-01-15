@@ -1,0 +1,149 @@
+# Создать телефонный справочник с возможностью импорта и экспорта данных в формате .txt. Фамилия, имя, отчество, номер телефона - данные, которые должны находиться в файле.
+# Программа должна выводить данные
+# Программа должна сохранять данные в текстовом файле
+# Пользователь может ввести одну из характеристик для поиска определенной записи(Например имя или фамилию человека)
+# Использование функций. Ваша программа не должна быть линейной
+
+import os
+import fileinput
+
+
+def input_data(data):
+    while True:
+        user_input = input('введите номер телефона: ')
+        if not user_input or not user_input.isdigit():
+            return data
+        if user_input in data:
+            print('Такой номер уже есть!')
+        else:
+            temp = input("ФИО через пробел: ").split()
+            if len(temp) != 3:
+                print('Ошибка')
+            else:
+                data[user_input] = temp
+                with open('phone.txt', 'a') as f:
+                    print(f"{user_input}\t{temp[0]}\t{temp[1]}\t{temp[2]}", file=f)
+                return data
+
+
+def show_data(data):
+    for key, value in data.items():
+        print(key, *value)
+
+
+def search_data(data):
+    user_input = input("Поиск 1: номер телефона или 2: иное")
+    if user_input not in {'1', '2'}:
+        return
+    if user_input == '1':
+        phone = input("введите номер телефона: ")
+        print(data.get(phone, 'Нет номера'))
+        return
+    other = input("Имя или Фамилия или Отчество")
+    if ' ' in other or not other:
+        print('Ошибка')
+        return
+    for key, values in data.items():
+        for value in values:
+            if other in value:
+                print(key, *values)
+                break
+
+
+def change(data):
+    print("Мы предлагаем вам найти данные которые бы вы хотели изменить")
+    print("Если вы хотите изменить номер телефона то введите 1")
+    print("Если вы хотите изменить ФИО введите 2")
+    new_date = input()
+    if new_date not in {'1', '2'}:
+        print("Некоректный ввод")
+        return
+    if new_date == '1':
+        phone = input("введите номер телефона который вы хотите изменить: ")
+        print(data.get(phone, 'Нет номера'))
+        if data.get(phone):
+            new_phone = input("теперь новый номер телефона: ")
+            with open('phone.txt', 'r') as f:
+                line = f.read()
+                new_phone = line.replace(phone, new_phone)
+            with open('phone.txt', 'w') as f:
+                f.write(new_phone)
+                print("номер успешно обновлен")
+
+        else:
+            print("такого номера нет, давайте добавим пользователя с номером!")
+            input_data(data)
+    elif new_date =="2":
+        fio = input("введите ФИО который вы хотите изменить: ")
+        new_fio = input("введите новые ФИО который вы хотите: ")
+        with open("phone.txt", "r") as f:
+            lines = f.readlines()
+            with open("phone.txt", "w") as f:
+                for line in lines:
+                    if line.find(fio):
+                        new_fio = line.replace(fio, new_fio)
+                        f.write(line.replace(fio, new_fio))
+                        print("данные изменены")
+    return
+
+
+def delete(data):
+    print("Мы предлагаем вам найти данные которые бы вы хотели удалить")
+    print("напишите номер телефона и все данные привязааные к нему удаляться")
+    # print("Если вы хотите изменить ФИО введите 2")
+    phone = input("введите номер телефона который вы хотите удалить: ")
+    print(data.get(phone, 'Нет номера'))
+    if data.get(phone):
+        with open("phone.txt", "r") as f:
+            lines = f.readlines()
+            with open("phone.txt", "w") as f:
+                for line in lines:
+                    if line.find(phone) == -1:
+                        f.write(line)
+    else:
+        print("такого номера нет, давайте добавим пользователя с номером!")
+        input_data(data)
+
+        return
+
+
+def main():
+    if os.path.exists('phone.txt'):
+        with open('phone.txt', 'r+') as file:
+            data = {}
+            for sentence in file:
+                if sentence == 1:
+                    phone = sentence.split('\t')
+                else:
+                    phone, second_name, first_name, third_name = sentence.split('\t')
+                    data[phone] = [second_name, first_name, third_name]
+    else:
+        with open('phone.txt', 'w') as f:
+            data = {}
+
+    print("Добро пожаловать в телефонный справочник")
+    while True:
+        while True:
+            user_input = input(
+                """1:ввести новые данные \n2:просмотреть данные \n3:поиск \n4:изменение \n5:удаление \n6:выход\n""")
+            if user_input not in {'1', '2', '3', '4', '5'}:
+                print('Неверное значение!')
+            else:
+                break
+        if user_input == '1':
+            data = input_data(data)
+        elif user_input == '2':
+            show_data(data)
+        elif user_input == '3':
+            search_data(data)
+        elif user_input == '4':
+            change(data)
+        elif user_input == '5':
+            delete(data)
+        else:
+            print('До свидания!!')
+            break
+
+
+if __name__ == '__main__':
+    main()

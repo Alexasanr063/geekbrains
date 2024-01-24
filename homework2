@@ -1,0 +1,35 @@
+# I did it with get_dummies
+import random
+import pandas as pd
+
+lst = ['robot'] * 10
+lst += ['human'] * 10
+random.shuffle(lst)
+data = pd.DataFrame({'whoAmI':lst})
+pd.get_dummies (data, columns=['whoAmI'], drop_first= True )
+
+#I did it another way #1
+import random
+import pandas as pd
+  
+lst = ['robot'] * 10
+lst += ['human'] * 10
+random.shuffle(lst)
+data = pd.DataFrame({'whoAmI':lst})
+value = data['whoAmI'].unique()
+one_hot = pd.DataFrame()
+for j in value:
+  one_hot[j] = (data['whoAmI']==j).astype(int)
+one_hot.head()
+
+#I did it another way #2
+import random
+import pandas as pd
+
+lst = ['robot'] * 10
+lst += ['human'] * 10
+random.shuffle(lst)
+data = pd.DataFrame({'whoAmI':lst})
+data["whoAmI"] = data["whoAmI"].astype('category')
+data["whoAmI"] = data["whoAmI"].cat.codes
+data.head()

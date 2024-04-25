@@ -1,0 +1,158 @@
+/*
+Для решения задач используйте базу данных lesson4
+(скрипт создания, прикреплен к 4 семинару).
+
+Создайте таблицу users_old, аналогичную таблице users. Создайте процедуру, с помощью которой можно переместить любого (одного) пользователя из таблицы users в таблицу users_old. (использование транзакции с выбором commit или rollback – обязательно).
+Создайте хранимую функцию hello(), которая будет возвращать приветствие, в зависимости от текущего времени суток. С 6:00 до 12:00 функция должна возвращать фразу "Доброе утро", с 12:00 до 18:00 функция должна возвращать фразу "Добрый день", с 18:00 до 00:00 — "Добрый вечер", с 00:00 до 6:00 — "Доброй ночи".
+(по желанию)* Создайте таблицу logs типа Archive. Пусть при каждом создании записи в таблицах users, communities и messages в таблицу logs помещается время и дата создания записи, название таблицы, идентификатор первичного ключа.
+*/
+
+use lesson_4;
+
+-- задача 1
+/*
+Создайте таблицу users_old, аналогичную таблице users. Создайте процедуру, 
+с помощью которой можно переместить любого (одного) пользователя из таблицы users в таблицу users_old. 
+(использование транзакции с выбором commit или rollback – обязательно).
+*/
+-- Создание таблицы users_old
+DROP TABLE IF EXISTS users_old;
+CREATE TABLE users_old (
+    id BIGINT UNSIGNED PRIMARY KEY,
+    firstname VARCHAR(50),
+    lastname VARCHAR(50),
+    email VARCHAR(120) UNIQUE
+);
+
+-- Создание процедуры для перемещения пользователя
+DELIMITER //
+
+CREATE PROCEDURE MoveUserToOld(userIdToRemove BIGINT UNSIGNED)
+BEGIN
+    DECLARE rollbackAction BOOLEAN DEFAULT 0;
+    
+    -- Начало транзакции
+    START TRANSACTION;
+    
+    -- Проверка наличия пользователя в таблице users
+    SELECT COUNT(*) INTO @userExists FROM users WHERE id = userIdToRemove;
+    
+    IF @userExists > 0 THEN
+        -- Получение данных пользователя
+        SELECT * FROM users WHERE id = userIdToRemove INTO @id, @firstname, @lastname, @email;
+        
+        -- Вставка данных пользователя в таблицу users_old
+        INSERT INTO users_old (id, firstname, lastname, email) VALUES (@id, @firstname, @lastname, @email);
+        
+        -- Удаление пользователя из таблицы users
+        DELETE FROM users WHERE id = userIdToRemove;
+    ELSE
+        SET rollbackAction = 1; -- Пользователь не найден, отметить для отката
+    END IF;
+    
+    -- Конец транзакции
+    IF rollbackAction THEN
+        ROLLBACK; -- Откатить транзакцию, если пользователь не был найден
+    ELSE
+        COMMIT; -- Применить изменения
+    END IF;
+    
+END //
+
+DELIMITER ;
+
+
+-- задача 2
+/*
+Создайте хранимую функцию hello(), которая будет возвращать приветствие, в зависимости от текущего времени суток. 
+С 6:00 до 12:00 функция должна возвращать фразу "Доброе утро", с 12:00 до 18:00 функция должна возвращать фразу "Добрый день", 
+с 18:00 до 00:00 — "Добрый вечер", с 00:00 до 6:00 — "Доброй ночи".
+*/
+DELIMITER //
+
+DROP FUNCTION IF EXISTS hello;
+
+CREATE FUNCTION hello()
+RETURNS VARCHAR(50)
+DETERMINISTIC
+BEGIN
+    DECLARE greeting VARCHAR(50);
+    DECLARE current_hour INT;
+
+    -- Получение текущего часа
+    SELECT HOUR(NOW()) INTO current_hour;
+
+    -- Определение приветствия в зависимости от текущего времени суток
+    IF current_hour >= 6 AND current_hour < 12 THEN
+        SET greeting = 'Доброе утро';
+    ELSEIF current_hour >= 12 AND current_hour < 18 THEN
+        SET greeting = 'Добрый день';
+    ELSEIF current_hour >= 18 AND current_hour < 24 THEN
+        SET greeting = 'Добрый вечер';
+    ELSE
+        SET greeting = 'Доброй ночи';
+    END IF;
+
+    RETURN greeting;
+END //
+
+DELIMITER ;
+
+
+-- задача 3
+/*
+(по желанию)* Создайте таблицу logs типа Archive. Пусть при каждом создании записи в таблицах users, 
+communities и messages в таблицу logs помещается время и дата создания записи, название таблицы, идентификатор первичного ключа.
+*/
+-- Создание таблицы logs типа Archive
+use lesson_4;
+-- Проверка существования таблицы перед созданием
+DROP TABLE IF EXISTS logs;
+
+-- Создание таблицы logs типа Archive
+CREATE TABLE logs (
+    log_id INT AUTO_INCREMENT PRIMARY KEY,
+    table_name VARCHAR(50),
+    primary_key_id INT,
+    creation_datetime DATETIME
+) ENGINE=ARCHIVE;
+
+-- Триггер для таблицы users
+DELIMITER //
+
+CREATE TRIGGER users_after_insert
+AFTER INSERT ON users
+FOR EACH ROW
+BEGIN
+    INSERT INTO logs (table_name, primary_key_id, creation_datetime)
+    VALUES ('users', NEW.user_id, NOW());
+END //
+
+DELIMITER ;
+
+-- Триггер для таблицы communities
+DELIMITER //
+
+CREATE TRIGGER communities_after_insert
+AFTER INSERT ON communities
+FOR EACH ROW
+BEGIN
+    INSERT INTO logs (table_name, primary_key_id, creation_datetime)
+    VALUES ('communities', NEW.community_id, NOW());
+END //
+
+DELIMITER ;
+
+-- Триггер для таблицы messages
+DELIMITER //
+
+CREATE TRIGGER messages_after_insert
+AFTER INSERT ON messages
+FOR EACH ROW
+BEGIN
+    INSERT INTO logs (table_name, primary_key_id, creation_datetime)
+    VALUES ('messages', NEW.message_id, NOW());
+END //
+
+DELIMITER ;
+

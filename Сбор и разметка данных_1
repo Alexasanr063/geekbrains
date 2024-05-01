@@ -1,0 +1,37 @@
+# # Напишите сценарий на языке Python, который предложит пользователю ввести интересующую его категорию (например, кофейни, музеи, парки и т.д.).
+# # Используйте API Foursquare для поиска заведений в указанной категории.
+# # Получите название заведения, его адрес и рейтинг для каждого из них.
+# # Скрипт должен вывести название и адрес и рейтинг каждого заведения в консоль.
+
+import requests
+import pandas as pd
+import json
+
+# Ваши учетные данные API
+client_id = "RBJQZC2R0EABO252011X0CR33WN4E2XFCCJ155GL5QFWBDC0"
+client_secret = "2IHJWWDRXZ1SPO4LA0PH3MB2D0IVIYXK5GV4RRL0MTSEDFJN"
+
+# Конечная точка API
+endpoint = "https://api.foursquare.com/v3/places/search"
+headers = {
+    "Accept": "application/json",
+    "Authorization": "fsq3laGYApdCXFXSC8CqIspWfxriz8IA9H988UGMfT6K4os="
+}
+
+place = input("Введите тип заведения: ")
+
+
+params = {'client_id': 'client_id ', 'client_secret': 'client_secret', 'near': 'Москва', 'qwery': place}
+respons = requests.get(endpoint, params=params, headers=headers)
+if respons.status_code == 200:
+    data = json.loads(respons.text)
+    values = data['results']
+    for value in values:
+         print("Name:", value['name'])
+         print("Address:", value['location']['formatted_address'])
+         print('rating', value.get('rating', 'N/A'))
+         print('\n')
+
+else:
+    print(f'Ошибка:  {respons.status_code}')
+

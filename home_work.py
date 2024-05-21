@@ -1,59 +1,48 @@
-import json
-from pymongo import MongoClient
 
-# Инициализация клиента
-client = MongoClient('mongodb://localhost:27017/')
 
-# Константы для имен базы данных и коллекции
-DB_NAME = 'pyloungedb'
-COLLECTION_NAME = 'youtubers'
+# Выберите веб-сайт с табличными данными, который вас интересует.
+# Напишите код Python, использующий библиотеку requests для отправки HTTP GET-запроса на сайт и получения HTML-содержимого страницы.
+# Выполните парсинг содержимого HTML с помощью библиотеки lxml, чтобы извлечь данные из таблицы.
+# Сохраните извлеченные данные в CSV-файл с помощью модуля csv.
 
-# Подключение к базе данных и получение коллекции
-db = client[DB_NAME]
-collection = db[COLLECTION_NAME]
+import  requests
+from lxml import html
+import csv
+import pandas as pd
 
-# Чтение данных из JSON
-with open('stock_data_0.json', 'r') as file:
-    data = json.load(file)
+url = 'https://finance.yahoo.com/trending-tickers/'
 
-# Функция для разбиения данных на части
-def chunk_data(data, chunk_size):
-    for i in range(0, len(data), chunk_size):
-        yield data[i:i + chunk_size]
+response = requests.get(url, headers={
+'User-Agent' : 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'})
 
-# Размер чанка
-chunk_size =50000
-data_chunks = list(chunk_data(data, chunk_size))
+tree = html.fromstring(response.content)
 
-# Вставка данных в базу
-for chunk in data_chunks:
-    try:
-        collection.insert_many(chunk)
-    except Exception as e:
-        print(f"Ошибка при вставке данных: {e}")
+table_rows = tree.xpath("//table[@class='W(100%)']/tbody/tr")
 
-print("Добавлена база данных")
+data_list = [] # в этом списке будем хранить словари с данным из каждой строки
+for row in table_rows:
+     data = {}
+     columns = row.xpath(".//td/text()")
 
-# Подсчет документов
-try:
-    count = collection.count_documents({})
-    print(f'Общее число документов: {count}')
-except Exception as e:
-    print(f"Ошибка при подсчете документов: {e}")
+     data['Symbol'] = row.xpath(".//td[1]/a/text()")[0].strip()
+     data['Name'] = columns[0].strip()
+     data['Last_prace'] = row.xpath(".//td[3]/fin-streamer/text()")[0].strip()
+     data['Marker_time'] = row.xpath(".//td[4]/fin-streamer/text()")[0].strip()
+     data['Change'] = row.xpath(".//td[5]/fin-streamer/span/text()")[0].strip()
+     data['%Change'] = row.xpath(".//td[6]/fin-streamer/span/text()")[0].strip()
+     data['Volume'] = row.xpath(".//td[7]/fin-streamer/text()")[0].strip()
+     data['Marker_Cap'] = ''.join(row.xpath(".//td[8]/fin-streamer/text()")) if row.xpath(".//td[8]/fin-streamer/text()") else 'ничего нету'
+     data_list.append(data)
+for i in data_list:
+    print(i)
 
-# Запросы к базе данных
-queries = [
-    {"COST": {'$lt':2}},
-    {'COST': {'$gte':3}},
-    {"STRENGTH": {'$regex': "Company", '$options': 'i'}},
-    {'OPPORTUNITIES': {'$in': ["Positive", "Breakout"]}},
-    {'properties.rdconfigur': {'$all': ["TWO-WAY", "DIVIDED"]}},
-    {'properties.rdcondition': {'$ne': 'DRY'}}
-]
+# Создание DataFrame
+df = pd.DataFrame(data_list)
 
-for i, query in enumerate(queries, start=2):
-    try:
-        count = collection.count_documents(query)
-        print(f'кол документов для запроса {i}: {count}')
-    except Exception as e:
-        print(f"Ошибка при выполнении запроса {i}: {e}")
+# Путь к файлу CSV
+csv_file_path = "data.csv"
+
+# Запись DataFrame в файл CSV
+df.to_csv(csv_file_path, index=False)
+
+print("Данные успешно записаны в файл CSV.")

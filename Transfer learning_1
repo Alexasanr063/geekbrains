@@ -1,0 +1,49 @@
+import pandas as pd
+import numpy as np
+from sklearn.decomposition import PCA
+from sklearn.cluster import AgglomerativeClustering
+import plotly.express as px
+
+# Загрузка данных
+df = pd.read_csv('/content/lenta-ru-news.csv.bz2', low_memory=False)
+
+# Выборка данных по темам
+df2 = pd.concat([
+    df[df['topic'] == "Силовые структуры"].sample(500),
+    df[df['topic'] == "Культура"].sample(500),
+    df[df['topic'] == "Наука и техника"].sample(500)
+])
+
+# Получение эмбеддингов для заголовков
+embeddings = np.concatenate([np.array(get_sentence_embedding(s)) for s in df2['title']], axis=0)
+
+# Снижение размерности до 15
+pca = PCA(n_components=15, random_state=42)
+emb_15d = pca.fit_transform(embeddings)
+
+# Кластеризация
+clustering = AgglomerativeClustering(n_clusters=3, distance_threshold=None,
+                                     affinity='cosine', linkage='average').fit(emb_15d)
+
+# Снижение размерности до 2 для визуализации
+pca = PCA(n_components=2, random_state=42)
+emb_2d = pd.DataFrame(pca.fit_transform(embeddings), columns=['x1', 'x2'])
+
+# Добавление меток кластеров и тем
+emb_2d['label'] = df2["topic"].to_list()
+
+# Создание графика
+fig = px.scatter(
+    emb_2d,
+    x='x1',
+    y='x2',
+    color='label',  # Использование меток тем для цвета
+    width=800,
+    height=600,
+    hover_name="label",
+    labels={'x1': 'Компонент 1', 'x2': 'Компонент 2'},  # Подписи осей
+    title='Визуализация кластеров новостных заголовков'  # Заголовок графика
+)
+
+# Отображение графика
+fig.show()
